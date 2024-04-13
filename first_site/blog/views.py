@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Post
@@ -6,8 +7,10 @@ from .forms import PostForm
 
 
 # Create your views here.
+@login_required()
 def edit_post(request, id):
-    post = get_object_or_404(Post, id=id)
+    queryset = Post.objects.filter(author=request.user)
+    post = get_object_or_404(queryset, id=id)
 
     if request.method == "GET":
         context = {'form': PostForm(instance=post), "id": id}
@@ -23,8 +26,10 @@ def edit_post(request, id):
             return render(request, 'blog/post_form.html', {"form": form})
 
 
+@login_required()
 def delete_post(request, id):
-    post = get_object_or_404(Post, id=id)
+    queryset = Post.objects.filter(author=request.user)
+    post = get_object_or_404(queryset, id=id)
     context = {'post': post}
     if request.method == "GET":
         return render(request, 'blog/post_confirm_delete.html', context)
@@ -44,6 +49,7 @@ def home(request):
     return render(request, "blog/home.html", context)
 
 
+@login_required
 def create_post(request):
     if request.method == "GET":
         context = {'form': PostForm()}
@@ -51,7 +57,9 @@ def create_post(request):
     elif request.method == "POST":
         form = PostForm(request.POST)
         if form.is_valid():
-            form.save()
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
             messages.success(request, "Success")
             return redirect('posts')
         else:
